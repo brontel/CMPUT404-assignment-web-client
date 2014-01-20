@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2013 Abram Hindle
+# Copyright 2013 Abram Hindle, Bronte Lee, Stephanie Gil
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib
+#from urllib.parse import urlparse
+import urlparse
 
 def help():
     print "httpclient.py [GET/POST] [URL]\n"
@@ -62,6 +64,17 @@ class HTTPClient(object):
     def GET(self, url, args=None):
         code = 500
         body = ""
+        
+        # Should have "http://" at the beginning
+        url_components = urlparse.urlsplit(url)
+        print(url_components)
+
+        request = "GET {0} HTTP/1.1\r\n".format(url_components[2]) + \
+            "Host: {0}\r\n".format(url_components[1]) 
+            
+
+        print(request)
+
         return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
@@ -76,12 +89,13 @@ class HTTPClient(object):
             return self.GET( url, args )
     
 if __name__ == "__main__":
+    print("==========================================================")
     client = HTTPClient()
     command = "GET"
     if (len(sys.argv) <= 1):
         help()
         sys.exit(1)
     elif (len(sys.argv) == 3):
-        print client.command( sys.argv[1], sys.argv[2] )
+        print client.command( sys.argv[2], sys.argv[1] ) # Switched order around
     else:
         print client.command( command, sys.argv[1] )    

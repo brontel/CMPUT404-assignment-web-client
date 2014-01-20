@@ -7,6 +7,14 @@ See requirements.org (plain-text) for a description of the project.
 
 Make a simple web-client like curl or wget
 
+
+Collaboration
+=============
+Pair programmed  
+Bronte Lee  
+Stephanie Gil  
+
+
 Contributors / Licensing
 ========================
 
