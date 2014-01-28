@@ -61,7 +61,7 @@ class HTTPClient(object):
 
         print("Socket connected to " + host + " on ip " + remote_ip)
 
-        msg = "GET / HTTP/1.1\r\n\r\n"
+        msg = "GET / HTTP/1.0\r\n\r\n"
 
         # Sending message
         try :
@@ -75,29 +75,24 @@ class HTTPClient(object):
         print('Message send successfully')
          
         #Now receive data
-        reply = sockie.recv(4096)
+        #reply = sockie.recv(4096)
          
-        #reply = self.recvall(sockie)
-
+        reply = self.recvall(sockie)
+	
         sockie.close()
         return reply
 
-    def get_code(self, data):
-        for line in data:
-            print line        
+    def get_code(self, data):       
         print "-----------------------"
-        first_line_parts = data[0].split()
-        print data[0]
-        
-        return None
+        first_line = data.split('\n')[0]
+        code = first_line.split()[1]
+        return code
 
     def get_headers(self,data):
-
-        
-
         return None
 
     def get_body(self, data):
+	# split at the first \n\n?
         return None
 
     # read everything from the socket
@@ -105,9 +100,10 @@ class HTTPClient(object):
         buffer = bytearray()
         done = False
         while not done:
-            part = sock.recv(1024)
+            part = sock.recv(4096)
             if (part):
-                buffer.extend(part)
+                print part
+		buffer.extend(part)
             else:
                 done = not part
         return str(buffer)
@@ -123,7 +119,8 @@ class HTTPClient(object):
 
         socket_return = self.connect(host, 80) 
 
-        self.get_code(socket_return)
+        code = self.get_code(socket_return)
+	body = self.get_body(socket_return)
 
         return HTTPRequest(code, body)
 
