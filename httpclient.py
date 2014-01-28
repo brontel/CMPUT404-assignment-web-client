@@ -36,7 +36,7 @@ class HTTPRequest(object):
 class HTTPClient(object):
     #def get_host_port(self,url):
 
-    def connect(self, host, port):
+    def connect(self, host, port=80):
 
         # Making socket
         try:
@@ -83,17 +83,18 @@ class HTTPClient(object):
         return reply
 
     def get_code(self, data):       
-        print "-----------------------"
         first_line = data.split('\n')[0]
         code = first_line.split()[1]
         return code
 
     def get_headers(self,data):
-        return None
+	headers_string = data.split('\r\n\r\n', 1)[0]
+	headers = headers_string.split('\r\n')
+	return headers
 
     def get_body(self, data):
-	# split at the first \n\n?
-        return None
+	body = data.split('\r\n\r\n', 1)[1]
+        return body
 
     # read everything from the socket
     def recvall(self, sock):
@@ -102,7 +103,6 @@ class HTTPClient(object):
         while not done:
             part = sock.recv(4096)
             if (part):
-                print part
 		buffer.extend(part)
             else:
                 done = not part
@@ -113,16 +113,21 @@ class HTTPClient(object):
         body = ""
         
         # Get the first(?) part of the request and the host    
-        (request, host) = self.parse_request(url, "GET")
+        (request, host, port) = self.parse_request(url, "GET")
 
         print(request)
 
-        socket_return = self.connect(host, 80) 
+        socket_return = self.connect(host, port) 
 
         code = self.get_code(socket_return)
+	print "-----CODE IS " + code
+	if code == "404":
+	    self.handle_404()
 	body = self.get_body(socket_return)
+	headers = self.get_headers(socket_return)
 
-        return HTTPRequest(code, body)
+	print "------BODY-----\n" + body
+        return HTTPRequest(int(code), body)
 
     def POST(self, url, args=None):
         code = 500
@@ -135,18 +140,29 @@ class HTTPClient(object):
 
         return HTTPRequest(code, body)
 
+    def handle_404(self):
+	pass
+
     def parse_request(self, url, req_type):
         """
         Takes a URL string and the type of request (GET, POST)
         and returns the first(?) part of the request and the host
-        """
+        path: index 2
+	host+port: index 1
+	"""
         url_comp = urlparse.urlsplit(url)
-        print(url_comp)
+	path = url_comp[2]
+	print url_comp
+	if ':' in url_comp[1]:
+  	    host, port = url_comp[1].split(':')
+        else:
+	    host = url_comp[1]
+	    port = 80
 
-        req = req_type + " {0} HTTP/1.1\r\n".format(url_comp[2]) + \
-            "Host: {0}\r\n\r\n".format(url_comp[1]) 
+	req = req_type + " {0} HTTP/1.1\r\n".format(path) + \
+            "Host: {0}\r\n\r\n".format(host) 
 
-        return (req, url_comp[1])
+        return (req, host, int(port))
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
