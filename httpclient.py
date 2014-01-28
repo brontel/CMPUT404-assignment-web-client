@@ -37,13 +37,64 @@ class HTTPClient(object):
     #def get_host_port(self,url):
 
     def connect(self, host, port):
-        # use sockets!
-        return None
+
+        # Making socket
+        try:
+            sockie = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        except socket.error:
+            print 'Failed to create socket'
+            sys.exit()
+                     
+        print 'Socket Created'        
+
+        # obtaining remote ip from host
+        try:
+            remote_ip = socket.gethostbyname( host )
+         
+        except socket.gaierror:
+            #could not resolve
+            print 'Hostname could not be resolved. Exiting'
+            sys.exit()
+
+        # Making the connection
+        sockie.connect((remote_ip, port))
+
+        print("Socket connected to " + host + " on ip " + remote_ip)
+
+        msg = "GET / HTTP/1.1\r\n\r\n"
+
+        # Sending message
+        try :
+            #Set the whole string
+            sockie.sendall(msg)
+        except socket.error:
+            #Send failed
+            print 'Send failed'
+            sys.exit()
+         
+        print('Message send successfully')
+         
+        #Now receive data
+        reply = sockie.recv(4096)
+         
+        #reply = self.recvall(sockie)
+
+        sockie.close()
+        return reply
 
     def get_code(self, data):
+        for line in data:
+            print line        
+        print "-----------------------"
+        first_line_parts = data[0].split()
+        print data[0]
+        
         return None
 
     def get_headers(self,data):
+
+        
+
         return None
 
     def get_body(self, data):
@@ -65,22 +116,40 @@ class HTTPClient(object):
         code = 500
         body = ""
         
-        # Should have "http://" at the beginning
-        url_components = urlparse.urlsplit(url)
-        print(url_components)
-
-        request = "GET {0} HTTP/1.1\r\n".format(url_components[2]) + \
-            "Host: {0}\r\n".format(url_components[1]) 
-            
+        # Get the first(?) part of the request and the host    
+        (request, host) = self.parse_request(url, "GET")
 
         print(request)
+
+        socket_return = self.connect(host, 80) 
+
+        self.get_code(socket_return)
 
         return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
         code = 500
         body = ""
+        
+        # Get the first(?) part of the request and the host    
+        (request, host) = self.parse_request(url, "POST")
+
+        print(request)
+
         return HTTPRequest(code, body)
+
+    def parse_request(self, url, req_type):
+        """
+        Takes a URL string and the type of request (GET, POST)
+        and returns the first(?) part of the request and the host
+        """
+        url_comp = urlparse.urlsplit(url)
+        print(url_comp)
+
+        req = req_type + " {0} HTTP/1.1\r\n".format(url_comp[2]) + \
+            "Host: {0}\r\n\r\n".format(url_comp[1]) 
+
+        return (req, url_comp[1])
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
