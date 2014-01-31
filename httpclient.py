@@ -89,7 +89,7 @@ class HTTPClient(object):
         print "---------------------CODE--------------------"
         print first_line
         code = first_line.split()[1]
-        return code
+        return int(code)
 
     def get_headers(self,data):
         headers_string = data.split('\r\n\r\n', 1)[0]
@@ -129,7 +129,7 @@ class HTTPClient(object):
         code = self.get_code(socket_return)
         body = self.get_body(socket_return)
 
-        return HTTPRequest(int(code), body)
+        return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
         code = 500
@@ -146,9 +146,6 @@ class HTTPClient(object):
         body = self.get_body(socket_return)
        
         return HTTPRequest(code, body)
-
-    def handle_404(self):
-        pass
 
     def parse_request(self, url, req_type, args=None):
         """
@@ -175,30 +172,18 @@ class HTTPClient(object):
         print req
         arg_string = ""
         if args != None:
-             arg_string += self.parse_arguments(args)
-
-        if req == "POST":
-            req +=  "Content-Length: " + len(arg_string) + "\r\n" + \
+             #arg_string += self.parse_arguments(args)
+	    arg_string = urllib.urlencode(args)
+        #if req == "POST":
+            req +=  "Content-Length: " + str(len(arg_string)) + "\r\n" + \
             "Content-Type: application/x-www-form-urlencoded\r\n" 
         print len(arg_string)
        
         req += "\r\n" + arg_string 
 
-
+	print "-----------------REQUEST-------------------------------------------"
+	print req
         return (req, host, int(port))
-
-    def parse_arguments(self, args):
-        result = ""
-        for key, value in args.iteritems():
-            words = value.split()
-            result += key + "="
-
-            for w in words:
-                result += w + "+"
-
-            result = result[:-1] + "&"
-
-        return result[:-1]
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
