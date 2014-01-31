@@ -37,7 +37,9 @@ class HTTPClient(object):
     #def get_host_port(self,url):
 
     def connect(self, host, port=80):
-
+        """
+        Makes a socket connection and returns it
+        """
         # Making socket
         try:
             sockie = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -45,8 +47,6 @@ class HTTPClient(object):
             print 'Failed to create socket'
             sys.exit()
                      
-        print 'Socket Created'        
-
         # obtaining remote ip from host
         try:
             remote_ip = socket.gethostbyname( host )
@@ -59,14 +59,16 @@ class HTTPClient(object):
         # Making the connection
         sockie.connect((remote_ip, port))
 
-        print("Socket connected to " + host + " on ip " + remote_ip)
+        return sockie
 
-        msg = "GET / HTTP/1.0\r\n\r\n"
-
+    def send_message(self, sockie, req):
+        """
+        Sends the request through the given socket and receive the response
+        """
         # Sending message
-        try :
+        try:
             #Set the whole string
-            sockie.sendall(msg)
+            sockie.sendall(req)
         except socket.error:
             #Send failed
             print 'Send failed'
@@ -74,11 +76,8 @@ class HTTPClient(object):
          
         print('Message send successfully')
          
-        #Now receive data
-        #reply = sockie.recv(4096)
-         
         reply = self.recvall(sockie)
-	
+        
         sockie.close()
         return reply
 
@@ -88,12 +87,12 @@ class HTTPClient(object):
         return code
 
     def get_headers(self,data):
-	headers_string = data.split('\r\n\r\n', 1)[0]
-	headers = headers_string.split('\r\n')
-	return headers
+        headers_string = data.split('\r\n\r\n', 1)[0]
+        headers = headers_string.split('\r\n')
+        return headers
 
     def get_body(self, data):
-	body = data.split('\r\n\r\n', 1)[1]
+        body = data.split('\r\n\r\n', 1)[1]
         return body
 
     # read everything from the socket
@@ -103,30 +102,28 @@ class HTTPClient(object):
         while not done:
             part = sock.recv(4096)
             if (part):
-		buffer.extend(part)
+                buffer.extend(part)
             else:
                 done = not part
         return str(buffer)
 
     def GET(self, url, args=None):
+        """
+        Sends a GET request based on the url given
+        """
         code = 500
         body = ""
         
         # Get the first(?) part of the request and the host    
         (request, host, port) = self.parse_request(url, "GET")
 
-        print(request)
+        socket = self.connect(host, port) 
 
-        socket_return = self.connect(host, port) 
+        socket_return = self.send_message(socket, request)
 
         code = self.get_code(socket_return)
-	print "-----CODE IS " + code
-	if code == "404":
-	    self.handle_404()
-	body = self.get_body(socket_return)
-	headers = self.get_headers(socket_return)
+        body = self.get_body(socket_return)
 
-	print "------BODY-----\n" + body
         return HTTPRequest(int(code), body)
 
     def POST(self, url, args=None):
@@ -141,25 +138,27 @@ class HTTPClient(object):
         return HTTPRequest(code, body)
 
     def handle_404(self):
-	pass
+        pass
 
     def parse_request(self, url, req_type):
         """
         Takes a URL string and the type of request (GET, POST)
         and returns the first(?) part of the request and the host
         path: index 2
-	host+port: index 1
-	"""
+        host+port: index 1
+        """
         url_comp = urlparse.urlsplit(url)
-	path = url_comp[2]
-	print url_comp
-	if ':' in url_comp[1]:
-  	    host, port = url_comp[1].split(':')
-        else:
-	    host = url_comp[1]
-	    port = 80
+        path = url_comp[2]
+    
+        print url_comp
 
-	req = req_type + " {0} HTTP/1.1\r\n".format(path) + \
+        if ':' in url_comp[1]:
+              host, port = url_comp[1].split(':')
+        else:
+            host = url_comp[1]
+            port = 80
+
+        req = req_type + " {0} HTTP/1.1\r\n".format(path) + \
             "Host: {0}\r\n\r\n".format(host) 
 
         return (req, host, int(port))
@@ -171,7 +170,6 @@ class HTTPClient(object):
             return self.GET( url, args )
     
 if __name__ == "__main__":
-    print("==========================================================")
     client = HTTPClient()
     command = "GET"
     if (len(sys.argv) <= 1):
