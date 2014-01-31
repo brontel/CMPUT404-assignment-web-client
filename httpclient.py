@@ -78,11 +78,16 @@ class HTTPClient(object):
          
         reply = self.recvall(sockie)
         
+        print "--------------------reply--------------------"
+        print reply
+
         sockie.close()
         return reply
 
     def get_code(self, data):       
         first_line = data.split('\n')[0]
+        print "---------------------CODE--------------------"
+        print first_line
         code = first_line.split()[1]
         return code
 
@@ -131,16 +136,21 @@ class HTTPClient(object):
         body = ""
         
         # Get the first(?) part of the request and the host    
-        (request, host) = self.parse_request(url, "POST")
+        (request, host, port) = self.parse_request(url, "POST", args)
 
         print(request)
+        socket = self.connect(host, port) 
 
+        socket_return = self.send_message(socket, request)
+        code = self.get_code(socket_return)
+        body = self.get_body(socket_return)
+       
         return HTTPRequest(code, body)
 
     def handle_404(self):
         pass
 
-    def parse_request(self, url, req_type):
+    def parse_request(self, url, req_type, args=None):
         """
         Takes a URL string and the type of request (GET, POST)
         and returns the first(?) part of the request and the host
@@ -148,8 +158,10 @@ class HTTPClient(object):
         host+port: index 1
         """
         url_comp = urlparse.urlsplit(url)
-        path = url_comp[2]
+        path = url_comp[2][1:]
     
+        print "-------------path--------------"
+        print path 
         print url_comp
 
         if ':' in url_comp[1]:
@@ -158,10 +170,35 @@ class HTTPClient(object):
             host = url_comp[1]
             port = 80
 
-        req = req_type + " {0} HTTP/1.1\r\n".format(path) + \
-            "Host: {0}\r\n\r\n".format(host) 
+        req = req_type + " /" + "{0} HTTP/1.0\r\n".format(path) + \
+            "Host: {0}\r\n".format(host) 
+        print req
+        arg_string = ""
+        if args != None:
+             arg_string += self.parse_arguments(args)
+
+        if req == "POST":
+            req +=  "Content-Length: " + len(arg_string) + "\r\n" + \
+            "Content-Type: application/x-www-form-urlencoded\r\n" 
+        print len(arg_string)
+       
+        req += "\r\n" + arg_string 
+
 
         return (req, host, int(port))
+
+    def parse_arguments(self, args):
+        result = ""
+        for key, value in args.iteritems():
+            words = value.split()
+            result += key + "="
+
+            for w in words:
+                result += w + "+"
+
+            result = result[:-1] + "&"
+
+        return result[:-1]
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
