@@ -108,9 +108,6 @@ class HTTPClient(object):
         return str(buffer)
 
     def GET(self, url, args=None):
-        """
-        Sends a GET request based on the url given
-        """
         code = 500
         body = ""
 
@@ -140,19 +137,22 @@ class HTTPClient(object):
         """
         Takes a URL string and the type of request (GET, POST)
         and builds the request with necessary headers and body 
-        path: index 2
-        host+port: index 1
         """
         url_comp = urlparse.urlsplit(url)
         req_parts = {"host":url_comp[1], "port":"80", "args": args, \
                          "query":url_comp[3]}
+
+        # See if a root has been provided. Add a single slash if needed
         if len(url_comp[2]) == 0 or url_comp[2][0] != "/":
             req_parts["path"] = "/" + url_comp[2]
         else:
             req_parts["path"] = url_comp[2]
 
+        # Separate out the host and port if needed
         if ':' in url_comp[1]:
             req_parts["host"], req_parts["port"] = url_comp[1].split(':')
+
+        # Build the POST or GET request depending on the type
         if req_type == "POST":
             return self.build_post(req_parts)
         elif req_type == "GET":
@@ -170,13 +170,16 @@ class HTTPClient(object):
         req = "POST /" + "{0} HTTP/1.1\r\n".format(req_parts["path"]) + \
             "Host: {0}\r\n".format(req_parts["host"]) + "Connection: close\r\n"
 
+        # A POST will have the args in the body
         if req_parts["args"] != None:
-	    arg_string = urllib.urlencode(req_parts["args"])
+            arg_string = urllib.urlencode(req_parts["args"])
             req +=  "Content-Length: " + \
                 str(len(arg_string)) + "\r\n" + \
                 "Content-Type: application/x-www-form-urlencoded\r\n"
            
+
         req += "\r\n" + arg_string 
+
         return (req, req_parts["host"], int(req_parts["port"]))
 
     def build_get(self, req_parts):
@@ -186,10 +189,11 @@ class HTTPClient(object):
         if req_parts["query"] != "":
             req_parts["path"] += "?" + req_parts["query"]
         
+        # If there are any args in a GET, they go in the URI
         arg_string = ""
         content_headers = ""
         if req_parts["args"] != None:
-      	    arg_string = urllib.urlencode(args)
+            arg_string = urllib.urlencode(args)
             req_parts["path"] += "?"+arg_string
 
         req = "GET {0} HTTP/1.1\r\n".format(req_parts["path"]) + \
