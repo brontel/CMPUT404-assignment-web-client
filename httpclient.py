@@ -22,7 +22,6 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib
-#from urllib.parse import urlparse
 import urlparse
 
 def help():
@@ -77,17 +76,12 @@ class HTTPClient(object):
         print('Message send successfully')
          
         reply = self.recvall(sockie)
-        
-        print "--------------------reply--------------------"
-        print reply
 
         sockie.close()
         return reply
 
     def get_code(self, data):       
         first_line = data.split('\n')[0]
-        print "---------------------CODE--------------------"
-        print first_line
         code = first_line.split()[1]
         return int(code)
 
@@ -105,7 +99,7 @@ class HTTPClient(object):
         buffer = bytearray()
         done = False
         while not done:
-            part = sock.recv(4096)
+            part = sock.recv(1024)
             if (part):
                 buffer.extend(part)
             else:
@@ -156,10 +150,6 @@ class HTTPClient(object):
         """
         url_comp = urlparse.urlsplit(url)
         path = url_comp[2][1:]
-    
-        print "-------------path--------------"
-        print path 
-        print url_comp
 
         if ':' in url_comp[1]:
               host, port = url_comp[1].split(':')
@@ -167,22 +157,18 @@ class HTTPClient(object):
             host = url_comp[1]
             port = 80
 
-        req = req_type + " /" + "{0} HTTP/1.0\r\n".format(path) + \
-            "Host: {0}\r\n".format(host) 
-        print req
-        arg_string = ""
+        req = req_type + " /" + "{0} HTTP/1.1\r\n".format(path) + \
+            "Host: {0}\r\n".format(host) + "Connection: close\r\n"
+        
+	arg_string = ""
         if args != None:
              #arg_string += self.parse_arguments(args)
 	    arg_string = urllib.urlencode(args)
         #if req == "POST":
             req +=  "Content-Length: " + str(len(arg_string)) + "\r\n" + \
             "Content-Type: application/x-www-form-urlencoded\r\n" 
-        print len(arg_string)
        
         req += "\r\n" + arg_string 
-
-	print "-----------------REQUEST-------------------------------------------"
-	print req
         return (req, host, int(port))
 
     def command(self, url, command="GET", args=None):
