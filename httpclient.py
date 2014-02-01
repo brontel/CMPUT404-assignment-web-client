@@ -104,6 +104,7 @@ class HTTPClient(object):
                 buffer.extend(part)
             else:
                 done = not part
+        print str(buffer)
         return str(buffer)
 
     def GET(self, url, args=None):
@@ -112,12 +113,9 @@ class HTTPClient(object):
         """
         code = 500
         body = ""
-        
-        # Get the first(?) part of the request and the host    
+
         (request, host, port) = self.parse_request(url, "GET")
-
-        socket = self.connect(host, port) 
-
+        socket = self.connect(host, int(port)) 
         socket_return = self.send_message(socket, request)
 
         code = self.get_code(socket_return)
@@ -128,14 +126,11 @@ class HTTPClient(object):
     def POST(self, url, args=None):
         code = 500
         body = ""
-        
-        # Get the first(?) part of the request and the host    
+                    
         (request, host, port) = self.parse_request(url, "POST", args)
-
-        print(request)
         socket = self.connect(host, port) 
-
         socket_return = self.send_message(socket, request)
+        
         code = self.get_code(socket_return)
         body = self.get_body(socket_return)
        
@@ -144,32 +139,64 @@ class HTTPClient(object):
     def parse_request(self, url, req_type, args=None):
         """
         Takes a URL string and the type of request (GET, POST)
-        and returns the first(?) part of the request and the host
+        and builds the request with necessary headers and body 
         path: index 2
         host+port: index 1
         """
         url_comp = urlparse.urlsplit(url)
-        path = url_comp[2][1:]
+        req_parts = {"host":url_comp[1], "port":"80", "args": args, \
+                         "query":url_comp[3]}
+        if len(url_comp[2]) == 0 or url_comp[2][0] != "/":
+            req_parts["path"] = "/" + url_comp[2]
+        else:
+            req_parts["path"] = url_comp[2]
 
         if ':' in url_comp[1]:
-              host, port = url_comp[1].split(':')
+            req_parts["host"], req_parts["port"] = url_comp[1].split(':')
+        if req_type == "POST":
+            return self.build_post(req_parts)
+        elif req_type == "GET":
+            return self.build_get(req_parts)
         else:
-            host = url_comp[1]
-            port = 80
+            print "Incorrect request type"
+            sys.exit()
+    
+    def build_post(self, req_parts):
+        """
+        Builds the post request string.
+        """
 
-        req = req_type + " /" + "{0} HTTP/1.1\r\n".format(path) + \
-            "Host: {0}\r\n".format(host) + "Connection: close\r\n"
-        
-	arg_string = ""
-        if args != None:
-             #arg_string += self.parse_arguments(args)
-	    arg_string = urllib.urlencode(args)
-        #if req == "POST":
-            req +=  "Content-Length: " + str(len(arg_string)) + "\r\n" + \
-            "Content-Type: application/x-www-form-urlencoded\r\n" 
-       
+        arg_string = ""
+        req = "POST /" + "{0} HTTP/1.1\r\n".format(req_parts["path"]) + \
+            "Host: {0}\r\n".format(req_parts["host"]) + "Connection: close\r\n"
+
+        if req_parts["args"] != None:
+	    arg_string = urllib.urlencode(req_parts["args"])
+            req +=  "Content-Length: " + \
+                str(len(arg_string)) + "\r\n" + \
+                "Content-Type: application/x-www-form-urlencoded\r\n"
+           
         req += "\r\n" + arg_string 
-        return (req, host, int(port))
+        return (req, req_parts["host"], int(req_parts["port"]))
+
+    def build_get(self, req_parts):
+        """
+        Builds the get request string.
+        """
+        if req_parts["query"] != "":
+            req_parts["path"] += "?" + req_parts["query"]
+        
+        arg_string = ""
+        content_headers = ""
+        if req_parts["args"] != None:
+      	    arg_string = urllib.urlencode(args)
+            req_parts["path"] += "?"+arg_string
+
+        req = "GET {0} HTTP/1.1\r\n".format(req_parts["path"]) + \
+            "Host: {0}\r\n".format(req_parts["host"]) + \
+            "Connection: close\r\n\r\n"
+
+        return (req, req_parts["host"], int(req_parts["port"]))
 
     def command(self, url, command="GET", args=None):
         if (command == "POST"):
@@ -186,4 +213,4 @@ if __name__ == "__main__":
     elif (len(sys.argv) == 3):
         print client.command( sys.argv[2], sys.argv[1] ) # Switched order around
     else:
-        print client.command( command, sys.argv[1] )    
+        print client.command( sys.argv[1], command )    
